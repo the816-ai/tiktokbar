@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎵 Sàn Bar 3D Live — ÔNG CHÚ MMO</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #05030a;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Khung dọc chuẩn TikTok Live 9:16 */
+    #stage-wrapper {
+      position: relative;
+      width: min(100vw, calc(100vh * 9 / 16));
+      height: 100vh;
+      background: #0d061a center / cover no-repeat;
+      overflow: hidden;
+      box-shadow: 0 0 95px rgba(0, 225, 255, 0.35), 0 0 160px rgba(255, 0, 140, 0.25);
+      border-left: 1px solid rgba(255, 255, 255, 0.18);
+      border-right: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    /* Khung Camera có thể Zoom cận cảnh mượt mà vào nhân vật */
+    #stage-camera {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: 50% 50%;
+      transition: transform 0.65s cubic-bezier(0.22, 0.85, 0.32, 1);
+      will-change: transform;
+    }
+
+    body.chroma-mode #stage-wrapper {
+      background: #00ff00 !important;
+      box-shadow: none;
+    }
+    body.chroma-mode #bg-canvas {
+      display: none;
+    }
+
+    /* Canvas nền: Tường Gạch LED Đổi Màu + Sàn 3D + Quả Cầu Disco */
+    #bg-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Dải chữ LED chạy ngang trên tường sân khấu */
+    #wall-marquee-wrap {
+      position: absolute;
+      top: 17.2%;
+      left: 0;
+      width: 100%;
+      height: 35px;
+      background: linear-gradient(90deg, rgba(28, 8, 48, 0.92), rgba(82, 16, 48, 0.92), rgba(28, 8, 48, 0.92));
+      border-top: 2px solid rgba(255, 215, 100, 0.8);
+      border-bottom: 2px solid rgba(255, 105, 180, 0.8);
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      z-index: 3;
+      pointer-events: none;
+      transform: perspective(400px) rotateY(-4deg) skewY(-1.8deg);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 180, 40, 0.45);
+    }
+    #wall-marquee {
+      white-space: nowrap;
+      font-size: 19px;
+      font-weight: 900;
+      color: #ffe57f;
+      text-shadow: 0 0 10px #ff9100, 0 0 18px #ff3d00, 2px 2px 0 #000;
+      letter-spacing: 1.4px;
+      animation: marquee-scroll 14s linear infinite;
+    }
+    @keyframes marquee-scroll {
+      0%   { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* Dải thông báo người vừa vào sàn (Join Pills) phía trên */
+    #join-pill-bar {
+      position: absolute;
+      top: 12.8%;
+      left: 2.5%;
+      right: 2.5%;
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      z-index: 11;
+      pointer-events: none;
+    }
+    .join-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(12, 8, 24, 0.9);
+      border: 1.5px solid #b388ff;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.65), 0 0 10px rgba(179, 136, 255, 0.5);
+      border-radius: 999px;
+      padding: 4px 11px 4px 5px;
+      white-space: nowrap;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #fff;
+      animation: pill-slide 0.35s ease-out;
+    }
+    .join-pill-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #00b0ff;
+      color: #fff;
+      font-weight: 900;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #fff;
+    }
+    @keyframes pill-slide {
+      from { transform: translateX(40px); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Khu vực Bàn DJ + Nhân vật DJ bên phải như ảnh mẫu */
+    #dj-stage-box {
+      position: absolute;
+      right: 4.5%;
+      top: 29.5%;
+      width: 38%;
+      height: 15%;
+      z-index: 4;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    #dj-character-wrap {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      margin-bottom: -14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 0 14px rgba(0, 255, 180, 0.8));
+    }
+    #dj-character-wrap .dj-wings {
+      position: absolute;
+      width: 145px;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 0;
+      filter: hue-rotate(85deg) saturate(1.6);
+    }
+    #dj-character-wrap .dj-avatar {
+      position: relative;
+      width: 78px;
+      height: 78px;
+      object-fit: contain;
+      z-index: 1;
+    }
+    #dj-desk-led {
+      width: 100%;
+      height: 36px;
+      background: linear-gradient(180deg, #1b0c2e, #090412);
+      border: 2px solid #ff4081;
+      border-radius: 7px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.8), 0 0 18px rgba(255, 64, 129, 0.7), inset 0 0 10px rgba(0, 229, 255, 0.4);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 3px 0;
+    }
+    #dj-desk-text {
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 900;
+      color: #ffd740;
+      text-shadow: 0 0 6px #ff4081;
+      animation: marquee-scroll 8s linear infinite;
+    }
+    .dj-led-dots {
+      display: flex;
+      justify-content: space-around;
+      padding: 0 6px;
+    }
+    .dj-led-dots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #00e5ff;
+      box-shadow: 0 0 6px #00e5ff;
+    }
+    .dj-led-dots span:nth-child(odd) {
+      background: #ff4081;
+      box-shadow: 0 0 6px #ff4081;
+    }
+
+    /* Sàn nhảy chứa các nhân vật */
+    #dance-floor {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    /* Siêu Boss / Ngộ Không triệu hồi giữa sàn */
+    #boss-overlay {
+      position: absolute;
+      left: 50%;
+      top: 54%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 230px;
+      height: 230px;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.38s cubic-bezier(0.2, 1.3, 0.4, 1);
+      filter: drop-shadow(0 0 28px rgba(255, 196, 0, 0.95));
+    }
+    #boss-overlay.active {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    #boss-overlay img {
+      width: 195px;
+      height: 195px;
+      object-fit: contain;
+    }
+    .boss-tag {
+      background: linear-gradient(90deg, #ff3d00, #ffea00);
+      color: #111;
+      font-weight: 900;
+      font-size: 13px;
+      padding: 3px 12px;
+      border-radius: 99px;
+      border: 2px solid #fff;
+      box-shadow: 0 0 18px #ff6d00;
+      margin-bottom: -6px;
+      z-index: 2;
+    }
+
+    /* Hiệu ứng Trái Tim Ghép Đôi ở giữa sàn */
+    #pair-heart-overlay {
+      position: absolute;
+      left: 48%;
+      top: 63%;
+      transform: translate(-50%, -50%) scale(0);
+      z-index: 10;
+      pointer-events: none;
+      font-size: 54px;
+      filter: drop-shadow(0 0 22px #ff4081);
+      transition: transform 0.35s cubic-bezier(0.2, 1.3, 0.4, 1);
+    }
+    #pair-heart-overlay.active {
+      transform: translate(-50%, -50%) scale(1);
+      animation: heart-beat 0.55s ease-in-out infinite alternate;
+    }
+    @keyframes heart-beat {
+      from { transform: translate(-50%, -50%) scale(0.95); }
+      to   { transform: translate(-50%, -50%) scale(1.22); }
+    }
+
+    /* Lớp Canvas Đèn Chớp Nón Trước Mặt + Laser + Pháo Hoa */
+    #fx-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 8;
+    }
+
+    /* Nhân vật trên sàn nhảy */
+    .dancer {
+      position: absolute;
+      --depth-scale: 1;
+      transform: translate(-50%, -100%) scale(var(--depth-scale));
+      transform-origin: 50% 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: left 2.0s ease-in-out, top 2.0s ease-in-out, transform 0.4s ease;
+      will-change: left, top, transform;
+    }
+    .dancer.jumping {
+      animation: dancer-jump 0.46s ease-in-out infinite alternate;
+    }
+    .dancer.giant {
+      transform: translate(-50%, -100%) scale(1.45) !important;
+      filter: drop-shadow(0 0 22px rgba(255, 215, 0, 0.98));
+      z-index: 999 !important;
+    }
+    .dancer.king-mode .dancer-crown {
+      display: block !important;
+    }
+    @keyframes dancer-jump {
+      from { margin-top: 0px; }
+      to   { margin-top: -24px; }
+    }
+
+    .dancer-crown {
+      display: none;
+      font-size: 26px;
+      margin-bottom: -8px;
+      z-index: 5;
+      filter: drop-shadow(0 0 10px #ffd700);
+      animation: crown-float 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes crown-float {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-5px) scale(1.1); }
+    }
+
+    /* Khung Danh Hiệu Lửa / Băng / Hoàng Kim phía trên đầu nhân vật */
+    .dancer-title-wrap {
+      position: relative;
+      width: 112px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: -4px;
+      z-index: 3;
+    }
+    .dancer-title-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,0.85));
+    }
+    .dancer-title-text {
+      position: relative;
+      z-index: 2;
+      font-size: 10px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 1px 3px #000, 0 0 6px #ff6d00;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
+    .dancer-chat {
+      background: rgba(8, 6, 18, 0.92);
+      border: 1.5px solid #00e5ff;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 10px;
+      margin-bottom: 3px;
+      max-width: 145px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 10px rgba(0, 229, 255, 0.45);
+      z-index: 4;
+    }
+    .dancer-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(12, 9, 26, 0.9);
+      padding: 2px 8px 2px 3px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      margin-bottom: 2px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.75);
+      z-index: 3;
+    }
+    .dancer-avatar {
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #ffd740;
+    }
+    .dancer-name {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 1px 3px #000;
+      max-width: 86px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dancer-sprite-wrap {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Đổ bóng tròn dưới chân mỗi nhân vật giúp bám sàn 3D */
+    .dancer-sprite-wrap::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      width: 44px;
+      height: 11px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0) 75%);
+      z-index: 0;
+    }
+    .dancer-wings {
+      position: absolute;
+      width: 122px;
+      height: auto;
+      top: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .dancer-sprite {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      z-index: 1;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8));
+    }
+
+    /* Bảng Menu Gift cố định ở góc dưới bên phải (Y HỆT ẢNH MẪU) */
+    #gift-action-menu {
+      position: absolute;
+      right: 8px;
+      bottom: 7.5%;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      width: 126px;
+    }
+    .gift-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(12, 10, 24, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-left: 3.5px solid #ff4081;
+      border-radius: 7px;
+      padding: 5px 8px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.65);
+      transition: transform 0.12s, background 0.15s, border-color 0.15s;
+    }
+    .gift-menu-item:hover {
+      transform: translateX(-4px) scale(1.04);
+      background: rgba(255, 64, 129, 0.32);
+      border-color: #00e5ff;
+    }
+    .gift-menu-icon {
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    /* Banner thông báo sự kiện lớn */
+    #party-banner {
+      position: absolute;
+      top: 22.8%;
+      left: 50%;
+      transform: translateX(-50%) scale(0.9);
+      width: 88%;
+      padding: 9px 14px;
+      background: linear-gradient(90deg, rgba(136, 14, 79, 0.94), rgba(74, 20, 140, 0.94));
+      border: 1.5px solid #ffd740;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 900;
+      font-size: 13.5px;
+      color: #fff;
+      text-shadow: 0 0 8px #ff4081;
+      box-shadow: 0 0 24px rgba(255, 215, 64, 0.55);
+      z-index: 22;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+    }
+    #party-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+
+    /* Thanh công cụ điều khiển bên trái (F1 để ẩn/hiện) */
+    #hud-bar {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      background: rgba(11, 10, 26, 0.88);
+      border: 1px solid rgba(0, 225, 255, 0.38);
+      border-radius: 12px;
+      padding: 10px 12px;
+      backdrop-filter: blur(10px);
+      max-width: 245px;
+    }
+    body.hide-hud #hud-bar { display: none; }
+    .hud-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #00e5ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .conn-pill {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(0, 230, 118, 0.2);
+      color: #00e676;
+      border: 1px solid rgba(0, 230, 118, 0.45);
+    }
+    .conn-pill.offline {
+      background: rgba(255, 82, 82, 0.2);
+      color: #ff5252;
+      border-color: rgba(255, 82, 82, 0.45);
+    }
+    .hud-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .hud-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      text-decoration: none;
+    }
+    .hud-btn:hover {
+      background: rgba(0, 229, 255, 0.22);
+      border-color: #00e5ff;
+    }
+    .hud-btn.primary {
+      grid-column: span 2;
+      background: linear-gradient(90deg, #00b4db, #0083b0);
+      border-color: #00e5ff;
+    }
+    .hud-btn.strobe-btn {
+      grid-column: span 2;
+      background: linear-gradient(90deg, #ff9100, #ffea00);
+      color: #111;
+      font-weight: 900;
+      border-color: #fff;
+      box-shadow: 0 0 14px rgba(255, 210, 0, 0.55);
+    }
+    .hud-btn.accent {
+      background: linear-gradient(90deg, #ff007f, #7928ca);
+      border-color: #ff66b2;
+    }
+    .hud-hint {
+      font-size: 10px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <!-- Menu công cụ bên trái (Nhấn F1 để ẩn khi quay Live) -->
+  <div id="hud-bar">
+    <div class="hud-title">
+      <span>🕺 SÀN BAR LIVE 3D</span>
+      <span id="conn-pill" class="conn-pill">Đang nối…</span>
+    </div>
+    <div class="hud-btns">
+      <button class="hud-btn primary" id="btn-demo">🚀 Đông Đúc Như Mẫu (28 Người)</button>
+      <button class="hud-btn strobe-btn" id="btn-strobe">⚡ Đèn Chớp: CỰC MẠNH</button>
+      <button class="hud-btn accent" id="btn-drop">💥 Chớp Drop 5s</button>
+      <button class="hud-btn accent" id="btn-vip">🎆 Bắn Gift VIP</button>
+      <button class="hud-btn" id="btn-music">🎵 Bật Nhạc DJ</button>
+      <button class="hud-btn" id="btn-bgmode">🧱 Đổi Kiểu Sàn</button>
+      <button class="hud-btn" id="btn-chroma">🟩 Nền Xanh (F2)</button>
+      <a class="hud-btn" href="/control.html" target="_blank">⚙️ Control Panel</a>
+    </div>
+    <div class="hud-hint">
+      <b>F1</b> Ẩn bảng này · <b>F2</b> Nền xanh OBS · Bấm 8 nút góc dưới phải để test Camera, Ghép Đôi, Ngộ Không, Vua!
+    </div>
+  </div>
+
+  <!-- KHUNG SÀN BAR CHÍNH -->
+  <div id="stage-wrapper">
+    <!-- Dải Pill thông báo người vừa vào sàn -->
+    <div id="join-pill-bar">
+      <div class="join-pill"><span class="join-pill-badge" style="background:#ab47bc">T</span><span>Bảo Xinh Trai và 1 người nữa vừa vào sàn</span></div>
+      <div class="join-pill"><span class="join-pill-badge" style="background:#00b0ff">Q</span><span>Quang Đại vừa vào sàn</span></div>
+    </div>
+
+    <!-- Banner sự kiện -->
+    <div id="party-banner">🔥 PARTY ENERGY MAX — CẢ SÀN CÙNG QUẨY 🔥</div>
+
+    <!-- Khung Camera (cho phép Zoom mượt vào từng người chơi) -->
+    <div id="stage-camera">
+      <!-- Canvas 1: Tường Gạch LED Đổi Màu Có Chiều Sâu + Sàn Gương Tối Phối Cảnh 3D + Quả Cầu Disco -->
+      <canvas id="bg-canvas"></canvas>
+
+      <!-- Dải Bảng Điện Tử LED Chạy Chữ Trên Tường -->
+      <div id="wall-marquee-wrap">
+        <div id="wall-marquee">★ TOP: Ỗちゃん★ — 10 KIM CƯƠNG ★ BÁ CHỦ SÀN NHẢY: BÉ DYY ★ ĐẠI BÀNG: LAN ANH ★ QUẨY HẾT MÌNH CÙNG ÔNG CHÚ MMO ★</div>
+      </div>
+
+      <!-- Bục Bàn DJ & Nhân Vật DJ Đeo Cánh Bên Phải -->
+      <div id="dj-stage-box">
+        <div id="dj-character-wrap">
+          <img class="dj-wings" src="/assets/banners/wings-neon.png" alt="" />
+          <img class="dj-avatar" src="/assets/stage/dj.gif" alt="DJ" />
+        </div>
+        <div id="dj-desk-led">
+          <div id="dj-desk-text">10 KIM CƯƠNG • TOP: Ỗちゃん★ — BẢNG XẾP HẠNG VIP SÀN BAR • 10 KIM CƯƠNG</div>
+          <div class="dj-led-dots">
+            <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sàn nhảy chứa đám đông nhân vật + danh hiệu -->
+      <div id="dance-floor"></div>
+
+      <!-- Hiệu ứng triệu hồi Ngộ Không / Boss -->
+      <div id="boss-overlay">
+        <div class="boss-tag">⚡ ĐẠI THÁNH GIÁNG LÂM ⚡</div>
+        <img src="/assets/boss/boss_monster.gif" alt="" onerror="this.src='/assets/gifs/hanhan_video_dance.gif'" />
+      </div>
+
+      <!-- Hiệu ứng Trái Tim Ghép Đôi -->
+      <div id="pair-heart-overlay">💖</div>
+
+      <!-- Canvas 2: Luồng Đèn Chóp Nón Sắc Nét + Spotlight Camera + Tia Laser + Pháo Hoa -->
+      <canvas id="fx-canvas"></canvas>
+    </div>
+
+    <!-- Bảng Menu Hiệu Ứng Góc Dưới Phải (8 nút chuẩn mẫu) -->
+    <div id="gift-action-menu">
+      <div class="gift-menu-item" data-act="camera"><span class="gift-menu-icon">🌹</span><span>CAMERA</span></div>
+      <div class="gift-menu-item" data-act="change_character"><span class="gift-menu-icon">🎵</span><span>ĐỔI NV</span></div>
+      <div class="gift-menu-item" data-act="walk"><span class="gift-menu-icon">🍦</span><span>ĐI VÒNG</span></div>
+      <div class="gift-menu-item" data-act="jump"><span class="gift-menu-icon">🫰</span><span>NHẢY 1 CÁI</span></div>
+      <div class="gift-menu-item" data-act="fireworks"><span class="gift-menu-icon">🍩</span><span>PHÁO HOA</span></div>
+      <div class="gift-menu-item" data-act="pair"><span class="gift-menu-icon">💎</span><span>GHÉP ĐÔI</span></div>
+      <div class="gift-menu-item" data-act="wukong"><span class="gift-menu-icon">🎁</span><span>NGỘ KHÔNG</span></div>
+      <div class="gift-menu-item" data-act="king"><span class="gift-menu-icon">🪐</span><span>VUA</span></div>
+    </div>
+  </div>
+
+  <audio id="bg-music" src="/assets/stage/nhacnen.mp3" loop preload="auto"></audio>
+
+  <script>
+    let SPRITES = [
+      '/assets/gifs/a.gif', '/assets/gifs/b.gif', '/assets/gifs/c.gif',
+      '/assets/gifs/d.gif', '/assets/gifs/e.gif', '/assets/gifs/g.gif',
+      '/assets/gifs/h.gif', '/assets/gifs/j.gif', '/assets/gifs/k.gif',
+      '/assets/gifs/l.gif', '/assets/gifs/x.gif', '/assets/gifs/z.gif',
+      '/assets/gifs/hanhan_video_dance.gif',
+      '/assets/gifs/mushroom_dance_01.gif', '/assets/gifs/mushroom_dance_02.gif',
+      '/assets/gifs/mushroom_dance_03.gif', '/assets/gifs/mushroom_dance_05.gif',
+      '/assets/gifs/mushroom_dance_06.gif', '/assets/gifs/mushroom_dance_08.gif',
+      '/assets/gifs/mushroom_dance_09.gif', '/assets/gifs/mushroom_dance_12.gif',
+      '/assets/gifs/mushroom_dance_13.gif', '/assets/gifs/mushroom_dance_14.gif',
+      '/assets/gifs/mushroom_dance_15.gif', '/assets/gifs/mushroom_dance_16.gif',
+      '/assets/gifs/mushroom_dance_17.gif', '/assets/gifs/mushroom_dance_18.gif',
+      '/assets/gifs/mushroom_dance_19.gif', '/assets/gifs/mushroom_dance_42.gif',
+      '/assets/gifs/mushroom_dance_55.gif', '/assets/gifs/mushroom_magic_02.gif',
+      '/assets/gifs/mushroom_magic_05.gif', '/assets/gifs/mushroom_magic_07.gif'
+    ];
+    fetch('/api/gifs')
+      .then(r => r.ok ? r.json() : null)
+      .then(list => {
+        if (Array.isArray(list) && list.length > 0) {
+          SPRITES = list.map(name => `/assets/gifs/${encodeURIComponent(name)}`);
+        }
+      })
+      .catch(() => {});
+
+    const AVATARS = Array.from({ length: 16 }, (_, i) => `/assets/avatars/npc-avatar-${String(i).padStart(2, '0')}.png`);
+    const WINGS = [
+      '/assets/banners/wings-neon.png',
+      '/assets/banners/wings-fire.png',
+      '/assets/banners/wings-ice.png'
+    ];
+    const TITLES = [
+      { text: 'Bá chủ',     bg: '/assets/banners/title-royal.png' },
+      { text: 'Đại bàng',   bg: '/assets/banners/title-ice.png' },
+      { text: 'Bão tim',    bg: '/assets/banners/title-fire.png' },
+      { text: 'Thần khẩu',  bg: '/assets/banners/title-neon.png' },
+      { text: 'Cuồng tim',  bg: '/assets/banners/title-fire.png' },
+      { text: 'Á vương',    bg: '/assets/banners/title-ice.png' }
+    ];
+
+    let bgStyle = 0; // 0 = Tường Gạch LED 3D + Sàn Gương Tối, 1 = Sàn Bar Neon, 2 = Sàn Âm Phủ
+    const bgImages = { 1: new Image(), 2: new Image() };
+    bgImages[1].src = '/assets/stage/neon-bar.png';
+    bgImages[2].src = '/assets/stage/am-phu.png';
+
+    let strobeMode = 2; // 2 = Cực mạnh, 1 = Vừa, 0 = Tắt
+    let dropBoostUntil = performance.now() + 4500;
+    let cameraSpotlightTarget = null;
+    let cameraResetTimer = null;
+
+    const dancers = new Map();
+    const vipScores = new Map();
+    const danceFloor = document.getElementById('dance-floor');
+    const stageWrapper = document.getElementById('stage-wrapper');
+    const stageCamera = document.getElementById('stage-camera');
+    const bossOverlay = document.getElementById('boss-overlay');
+    const pairHeartOverlay = document.getElementById('pair-heart-overlay');
+    const joinPillBar = document.getElementById('join-pill-bar');
+    const partyBanner = document.getElementById('party-banner');
+    const bgMusic = document.getElementById('bg-music');
+    const connPill = document.getElementById('conn-pill');
+    let bannerTimer = null;
+
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function triggerStrobeDrop(ms = 4500) {
+      dropBoostUntil = performance.now() + ms;
+    }
+
+    function showBanner(text, duration = 3200) {
+      partyBanner.textContent = text;
+      partyBanner.classList.add('show');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => partyBanner.classList.remove('show'), duration);
+    }
+
+    function pushJoinPill(nickname) {
+      const colors = ['#00b0ff', '#ab47bc', '#ff4081', '#00e676', '#ff9100'];
+      const pill = document.createElement('div');
+      pill.className = 'join-pill';
+      const firstChar = (nickname || 'U').trim().charAt(0).toUpperCase();
+      pill.innerHTML = `<span class="join-pill-badge" style="background:${pickRandom(colors)}">${firstChar}</span><span>${nickname} vừa vào sàn</span>`;
+      joinPillBar.prepend(pill);
+      while (joinPillBar.children.length > 3) {
+        joinPillBar.lastElementChild.remove();
+      }
+    }
+
+    /* ═══ TÍNH TỶ LỆ XA-GẦN 3D & CHỐNG CHỒNG ĐÈ NHÂN VẬT ═══ */
+    function computeDepthScale(yPct) {
+      // Đứng ở xa (y=42%) scale ~0.72, đứng gần phía trước (y=92%) scale ~1.12
+      const norm = Math.max(0, Math.min(1, (yPct - 42) / 50));
+      return (0.72 + norm * 0.40).toFixed(3);
+    }
+
+    function applyDancerPosition(d, x, y) {
+      d.x = Math.max(9, Math.min(82, x));
+      d.y = Math.max(43, Math.min(92, y));
+      d.el.style.left = d.x + '%';
+      d.el.style.top = d.y + '%';
+      d.el.style.setProperty('--depth-scale', computeDepthScale(d.y));
+      d.el.style.zIndex = String(Math.round(d.y * 10));
+    }
+
+    function findWellSpacedFloorPos() {
+      let bestPos = { x: 12 + Math.random() * 68, y: 45 + Math.random() * 45 };
+      let bestMinDist = -1;
+      for (let attempt = 0; attempt < 18; attempt++) {
+        const cand = { x: 10 + Math.random() * 70, y: 45 + Math.random() * 45 };
+        // Tránh khu vực góc dưới phải của bảng menu Gift (x > 68 và y > 68)
+        if (cand.x > 66 && cand.y > 66) continue;
+        let minDist = 9999;
+        for (const other of dancers.values()) {
+          const dx = cand.x - other.x;
+          const dy = (cand.y - other.y) * 1.45;
+          const dist = Math.hypot(dx, dy);
+          if (dist < minDist) minDist = dist;
+        }
+        if (minDist > bestMinDist) {
+          bestMinDist = minDist;
+          bestPos = cand;
+        }
+        if (minDist >= 13.5) break;
+      }
+      return bestPos;
+    }
+
+    // Tự động đẩy nhẹ các nhân vật đứng quá sát nhau để không đè bảng tên & danh hiệu
+    function relaxCrowdPositions() {
+      const list = [...dancers.values()];
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+          const a = list[i];
+          const b = list[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const dist = Math.hypot(dx, dy * 1.35);
+          const minSep = 11.5;
+          if (dist > 0.01 && dist < minSep) {
+            const push = (minSep - dist) * 0.35;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            applyDancerPosition(a, a.x - nx * push, a.y - ny * push * 0.7);
+            applyDancerPosition(b, b.x + nx * push, b.y + ny * push * 0.7);
+          }
+        }
+      }
+    }
+
+    function ensureDancer(userId, nickname, avatarUrl, opts = {}) {
+      const id = String(userId || nickname || 'guest-' + Math.random().toString(36).slice(2, 6));
+      let d = dancers.get(id);
+      if (!d) {
+        if (dancers.size >= 45) {
+          const oldest = dancers.keys().next().value;
+          removeDancer(oldest);
+        }
+        const pos = opts.pos || findWellSpacedFloorPos();
+        const el = document.createElement('div');
+        el.className = 'dancer';
+
+        const spriteUrl = pickRandom(SPRITES);
+        const av = avatarUrl || pickRandom(AVATARS);
+        const titleObj = opts.title || (Math.random() < 0.34 ? pickRandom(TITLES) : null);
+        const hasWings = opts.wings || (titleObj && Math.random() < 0.5);
+
+        el.innerHTML = `
+          <div class="dancer-crown">👑</div>
+          <div class="dancer-title-wrap" style="${titleObj ? '' : 'display:none'}">
+            <img class="dancer-title-bg" src="${titleObj ? titleObj.bg : '/assets/banners/title-fire.png'}" alt="" onerror="this.onerror=null;this.src='/assets/banners/title-fire.png'" />
+            <span class="dancer-title-text">${titleObj ? titleObj.text : ''}</span>
+          </div>
+          <div class="dancer-chat" style="display:none"></div>
+          <div class="dancer-header">
+            <img class="dancer-avatar" src="${av}" alt="" onerror="this.onerror=null;this.src='/assets/avatars/npc-avatar-00.png'" />
+            <span class="dancer-name"></span>
+          </div>
+          <div class="dancer-sprite-wrap">
+            <img class="dancer-wings" src="${pickRandom(WINGS)}" style="${hasWings ? '' : 'display:none'}" alt="" onerror="this.style.display='none'" />
+            <img class="dancer-sprite" src="${spriteUrl}" alt="" onerror="this.onerror=null;this.src='/assets/gifs/a.gif'" />
+          </div>
+        `;
+        el.querySelector('.dancer-name').textContent = nickname || id;
+        danceFloor.appendChild(el);
+        d = { id, nickname: nickname || id, el, x: pos.x, y: pos.y, chatTimer: null, fxTimer: null };
+        applyDancerPosition(d, pos.x, pos.y);
+        dancers.set(id, d);
+      } else {
+        if (nickname) {
+          d.nickname = nickname;
+          d.el.querySelector('.dancer-name').textContent = nickname;
+        }
+        if (avatarUrl) {
+          d.el.querySelector('.dancer-avatar').src = avatarUrl;
+        }
+      }
+      return d;
+    }
+
+    function removeDancer(id) {
+      const d = dancers.get(id);
+      if (d) {
+        d.el.remove();
+        dancers.delete(id);
+      }
+    }
+
+    function setDancerTitle(d, titleName, bgUrl) {
+      const wrap = d.el.querySelector('.dancer-title-wrap');
+      const bg = d.el.querySelector('.dancer-title-bg');
+      const txt = d.el.querySelector('.dancer-title-text');
+      bg.src = bgUrl || '/assets/banners/title-royal.png';
+      txt.textContent = titleName;
+      wrap.style.display = 'flex';
+    }
+
+    /* ═══ CÁC HIỆU ỨNG ĐẶC BIỆT (CAMERA ZOOM, GHÉP ĐÔI, NGỘ KHÔNG, VUA) ═══ */
+    function focusCameraOnDancer(d, durationMs = 3600) {
+      if (!d) return;
+      cameraSpotlightTarget = d;
+      const offsetX = (50 - d.x) * 0.55;
+      const offsetY = (58 - d.y) * 0.55;
+      stageCamera.style.transform = `scale(1.58) translate(${offsetX}%, ${offsetY}%)`;
+      d.el.classList.add('jumping');
+      clearTimeout(cameraResetTimer);
+      cameraResetTimer = setTimeout(() => {
+        stageCamera.style.transform = 'scale(1) translate(0%, 0%)';
+        cameraSpotlightTarget = null;
+        d.el.classList.remove('jumping');
+      }, durationMs);
+    }
+
+    function triggerPairEffect() {
+      const list = [...dancers.values()];
+      if (list.length < 2) return;
+      const a = list[Math.floor(Math.random() * list.length)];
+      let b = list[Math.floor(Math.random() * list.length)];
+      if (b === a) b = list[(list.indexOf(a) + 1) % list.length];
+
+      applyDancerPosition(a, 39, 66);
+      applyDancerPosition(b, 57, 66);
+      a.el.classList.add('jumping');
+      b.el.classList.add('jumping');
+      pairHeartOverlay.classList.add('active');
+      spawnFireworks(48, 56, 4);
+      showBanner(`💎 GHÉP ĐÔI THÀNH CÔNG: ${a.nickname} 💖 ${b.nickname}!`);
+
+      setTimeout(() => {
+        pairHeartOverlay.classList.remove('active');
+        a.el.classList.remove('jumping');
+        b.el.classList.remove('jumping');
+      }, 4200);
+    }
+
+    function triggerWukongEffect(d) {
+      bossOverlay.classList.add('active');
+      triggerStrobeDrop(5000);
+      spawnFireworks(50, 48, 5);
+      showBanner(`🎁 ${d ? d.nickname : 'ĐẠI GIA'} TRIỆU HỒI TỀ THIÊN ĐẠI THÁNH!`);
+      setTimeout(() => {
+        bossOverlay.classList.remove('active');
+      }, 4800);
+    }
+
+    function triggerKingEffect(d) {
+      if (!d) return;
+      applyDancerPosition(d, 46, 62);
+      setDancerTitle(d, 'Bá chủ', '/assets/banners/title-royal.png');
+      const wingsEl = d.el.querySelector('.dancer-wings');
+      wingsEl.src = '/assets/banners/wings-fire.png';
+      wingsEl.style.display = 'block';
+      d.el.classList.add('giant', 'king-mode', 'jumping');
+      focusCameraOnDancer(d, 4200);
+      triggerStrobeDrop(5000);
+      spawnFireworks(46, 50, 6);
+      showBanner(`🪐 VUA SÀN NHẢY ĐĂNG QUANG: ${d.nickname}! 👑`);
+      clearTimeout(d.fxTimer);
+      d.fxTimer = setTimeout(() => {
+        d.el.classList.remove('giant', 'jumping');
+      }, 5500);
+    }
+
+    /* ═══ XỬ LÝ SỰ KIỆN TỪ TIKTOK BRIDGE ═══ */
+    function handleLiveEvent(ev) {
+      if (!ev || !ev.type) return;
+      if (ev.type === 'reset' || ev.type === 'session_reset') {
+        for (const id of [...dancers.keys()]) removeDancer(id);
+        vipScores.clear();
+        showBanner('ĐÃ LÀM MỚI PHIÊN LIVE');
+        return;
+      }
+      if (ev.type === 'snapshot') {
+        for (const p of ev.players || []) {
+          ensureDancer(p.userId, p.nickname || p.uniqueId, p.avatar || p.avatarUrl);
+        }
+        return;
+      }
+      if (!['member', 'chat', 'gift', 'like', 'social', 'follow', 'share'].includes(ev.type)) return;
+
+      const isNew = !dancers.has(String(ev.userId || ev.nickname));
+      const d = ensureDancer(ev.userId, ev.nickname || ev.uniqueId, ev.avatar || ev.avatarUrl);
+      if (isNew || ev.type === 'member') pushJoinPill(d.nickname);
+
+      if (ev.comment) {
+        const chatEl = d.el.querySelector('.dancer-chat');
+        chatEl.textContent = ev.comment;
+        chatEl.style.display = 'block';
+        clearTimeout(d.chatTimer);
+        d.chatTimer = setTimeout(() => { chatEl.style.display = 'none'; }, 4500);
+      }
+
+      if (ev.action === 'change_character') {
+        d.el.querySelector('.dancer-sprite').src = pickRandom(SPRITES);
+      }
+      if (ev.action === 'camera') {
+        focusCameraOnDancer(d, Number(ev.durationMs) || 3500);
+      }
+
+      if (ev.action === 'jump' || ev.action === 'dance' || ev.type === 'gift') {
+        d.el.classList.add('jumping');
+        setTimeout(() => d.el.classList.remove('jumping'), Number(ev.durationMs) || 3500);
+      }
+
+      if (ev.type === 'gift' || Number(ev.diamondCount) > 0) {
+        const diamonds = Math.max(1, Number(ev.diamondCount) || 1);
+        const prev = vipScores.get(d.id) || { nickname: d.nickname, score: 0 };
+        prev.nickname = d.nickname;
+        prev.score += diamonds;
+        vipScores.set(d.id, prev);
+
+        const top = [...vipScores.values()].sort((a, b) => b.score - a.score)[0];
+        if (top) {
+          document.getElementById('wall-marquee').textContent =
+            `★ TOP 1: ${top.nickname} — ${top.score} KIM CƯƠNG ★ BÁ CHỦ SÀN NHẢY ★ QUẨY HẾT MÌNH CÙNG ÔNG CHÚ MMO ★`;
+          document.getElementById('dj-desk-text').textContent =
+            `${top.score} KIM CƯƠNG • TOP: ${top.nickname} ★ BẢNG XẾP HẠNG ĐẠI GIA`;
+        }
+
+        const wingsEl = d.el.querySelector('.dancer-wings');
+        wingsEl.src = pickRandom(WINGS);
+        wingsEl.style.display = 'block';
+
+        const chosenTitle = diamonds >= 100 ? TITLES[0] : pickRandom(TITLES);
+        setDancerTitle(d, chosenTitle.text, chosenTitle.bg);
+
+        if (diamonds >= 30 || ev.action === 'fireworks' || ev.action === 'topdj' || ev.action === 'grow') {
+          d.el.classList.add('giant');
+          triggerStrobeDrop(5000);
+          spawnFireworks(d.x, d.y - 14, diamonds >= 100 ? 5 : 3);
+          showBanner(`🎁 ${d.nickname} TẶNG ${ev.giftName || 'GIFT VIP'} (+${diamonds}💎)!`);
+          clearTimeout(d.fxTimer);
+          d.fxTimer = setTimeout(() => d.el.classList.remove('giant'), Number(ev.durationMs) || 5500);
+        } else {
+          triggerStrobeDrop(2000);
+          spawnFireworks(d.x, d.y - 10, 1);
+        }
+      }
+    }
+
+    // Di chuyển tự nhiên & tự giãn khoảng cách chống chồng đè
+    setInterval(() => {
+      for (const d of dancers.values()) {
+        if (d === cameraSpotlightTarget) continue;
+        if (Math.random() < 0.36) {
+          const pos = findWellSpacedFloorPos();
+          applyDancerPosition(d, pos.x, pos.y);
+        }
+      }
+      relaxCrowdPositions();
+    }, 2500);
+
+    /* ═══════════════════════════════════════════════════════════════════
+       CANVAS 1 (BG) & CANVAS 2 (FX):
+       - Tường gạch LED 3D có chiều sâu + Sàn gương tối làm nổi bật nhân vật
+       - Quả cầu gương Disco 3D + Hạt sao lấp lánh (4-Point Sparkle Stars)
+       - Luồng Đèn Chóp Nón Tam Giác mềm mại + Đèn Spotlight Camera
+    ═══════════════════════════════════════════════════════════════════ */
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const fxCanvas = document.getElementById('fx-canvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    const particles = [];
+
+    function resizeCanvases() {
+      bgCanvas.width = fxCanvas.width = stageWrapper.clientWidth;
+      bgCanvas.height = fxCanvas.height = stageWrapper.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvases);
+    resizeCanvases();
+
+    function spawnFireworks(xPct, yPct, bursts = 2) {
+      const cx = (xPct / 100) * fxCanvas.width;
+      const cy = (yPct / 100) * fxCanvas.height;
+      const colors = ['#00e5ff', '#ff4081', '#ffd740', '#b388ff', '#69f0ae', '#ffffff'];
+      for (let b = 0; b < bursts; b++) {
+        for (let i = 0; i < 28; i++) {
+          const angle = (Math.PI * 2 * i) / 28 + Math.random() * 0.2;
+          const speed = 1.6 + Math.random() * 4.6;
+          particles.push({
+            x: cx + (Math.random() - 0.5) * 36,
+            y: cy + (Math.random() - 0.5) * 36,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.2,
+            alpha: 1,
+            color: pickRandom(colors),
+            size: 2 + Math.random() * 2.5
+          });
+        }
+      }
+    }
+
+    const WALL_PANEL_HUES = [332, 38, 188, 278, 16, 162];
+
+    function drawLedBrickWallAndFloor(ctx, W, H, time, isDrop, flashOn) {
+      const wallBottom = H * 0.42;
+
+      // 1. Trần sân khấu tối có chiều sâu
+      const topGrad = ctx.createLinearGradient(0, 0, 0, H * 0.21);
+      topGrad.addColorStop(0, '#090414');
+      topGrad.addColorStop(1, '#240d3d');
+      ctx.fillStyle = topGrad;
+      ctx.fillRect(0, 0, W, H * 0.21);
+
+      // 2. Tường Gạch LED Đổi Màu (Có độ chuyển sáng dịu và sương khói sân khấu)
+      const cols = 16;
+      const rows = 12;
+      const startY = H * 0.20;
+      const wallH = wallBottom - startY;
+      const cellW = W / cols;
+      const cellH = wallH / rows;
+      const tick = Math.floor(time * (isDrop ? 14 : 6));
+
+      ctx.fillStyle = '#120722';
+      ctx.fillRect(0, startY, W, wallH);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const zone = c < 5 ? 0 : (c < 11 ? 1 : 2);
+          const baseHue = WALL_PANEL_HUES[(zone + Math.floor(time * 1.2)) % WALL_PANEL_HUES.length];
+          const wave = Math.sin(time * 4.5 + c * 0.45 + r * 0.35);
+          const cellFlash = flashOn && ((c + r + tick) % 6 === 0);
+          const lightness = cellFlash ? 76 : (44 + wave * 12);
+          const sat = cellFlash ? 95 : 82;
+
+          ctx.fillStyle = `hsl(${(baseHue + wave * 15 + 360) % 360}, ${sat}%, ${lightness}%)`;
+          ctx.fillRect(c * cellW + 1.5, startY + r * cellH + 1.5, cellW - 3, cellH - 3);
+        }
+      }
+
+      // Lớp sương mù chuyển tiếp giữa chân tường LED và mặt sàn (giúp tạo độ sâu 3D cực mạnh)
+      const wallHaze = ctx.createLinearGradient(0, startY, 0, wallBottom + H * 0.06);
+      wallHaze.addColorStop(0, 'rgba(10, 4, 22, 0.35)');
+      wallHaze.addColorStop(0.75, 'rgba(14, 6, 28, 0.25)');
+      wallHaze.addColorStop(1, 'rgba(10, 5, 22, 0.92)');
+      ctx.fillStyle = wallHaze;
+      ctx.fillRect(0, startY, W, wallH + H * 0.06);
+
+      // 3. Mặt Sàn Gương Tối (Glossy Dark Club Floor) làm nổi bật toàn bộ nhân vật & danh hiệu
+      const floorGrad = ctx.createLinearGradient(0, wallBottom, 0, H);
+      floorGrad.addColorStop(0, '#120824');
+      floorGrad.addColorStop(0.45, '#190b30');
+      floorGrad.addColorStop(1, '#080312');
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, wallBottom, W, H - wallBottom);
+
+      // Các ô gạch sàn phản chiếu ánh đèn Neon dưới chân
+      const fRows = 8;
+      const fCols = 7;
+      for (let fr = 0; fr < fRows; fr++) {
+        const t0 = fr / fRows;
+        const t1 = (fr + 1) / fRows;
+        const y0 = wallBottom + Math.pow(t0, 1.28) * (H - wallBottom);
+        const y1 = wallBottom + Math.pow(t1, 1.28) * (H - wallBottom);
+
+        for (let fc = 0; fc < fCols; fc++) {
+          const x0Top = (fc / fCols - 0.5) * W * (0.92 + t0 * 0.62) + W * 0.5;
+          const x1Top = ((fc + 1) / fCols - 0.5) * W * (0.92 + t0 * 0.62) + W * 0.5;
+          const x0Bot = (fc / fCols - 0.5) * W * (0.92 + t1 * 0.62) + W * 0.5;
+          const x1Bot = ((fc + 1) / fCols - 0.5) * W * (0.92 + t1 * 0.62) + W * 0.5;
+
+          const tileWave = Math.sin(time * 3.8 + fc * 0.9 - fr * 0.7);
+          const isLit = (fc + fr + tick) % 5 === 0;
+          const hue = WALL_PANEL_HUES[(fc + fr + Math.floor(time * 1.5)) % WALL_PANEL_HUES.length];
+          const fillAlpha = isLit && flashOn ? 0.24 : (0.06 + (tileWave * 0.5 + 0.5) * 0.09);
+
+          ctx.fillStyle = `hsla(${hue}, 90%, 55%, ${fillAlpha})`;
+          ctx.strokeStyle = `hsla(${hue}, 95%, 70%, ${isLit ? 0.36 : 0.16})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(x0Top, y0);
+          ctx.lineTo(x1Top, y0);
+          ctx.lineTo(x1Bot, y1);
+          ctx.lineTo(x0Bot, y1);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Vẽ ngôi sao 4 cánh lấp lánh quanh quả cầu Disco
+    function drawSparkleStar(ctx, x, y, size, alpha) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(size * 0.12, size * 0.12, size, 0);
+        ctx.quadraticCurveTo(size * 0.12, -size * 0.12, 0, 0);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawDiscoBall(ctx, cx, cy, radius, time, flashOn) {
+      ctx.save();
+      const glow = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius * 2.1);
+      glow.addColorStop(0, flashOn ? 'rgba(255, 255, 255, 0.75)' : 'rgba(190, 230, 255, 0.42)');
+      glow.addColorStop(0.45, 'rgba(180, 100, 255, 0.22)');
+      glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius * 2.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, cy - radius);
+      ctx.stroke();
+
+      ctx.fillStyle = '#141424';
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      const latSteps = 12;
+      const lonSteps = 20;
+      for (let lat = -latSteps / 2; lat < latSteps / 2; lat++) {
+        const theta1 = (lat / latSteps) * Math.PI;
+        const theta2 = ((lat + 0.86) / latSteps) * Math.PI;
+        for (let lon = 0; lon < lonSteps; lon++) {
+          const rot = (time * 0.85) % (Math.PI * 2);
+          const phi1 = (lon / lonSteps) * Math.PI + rot;
+          const phi2 = ((lon + 0.84) / lonSteps) * Math.PI + rot;
+          if (Math.sin(phi1) < -0.2) continue;
+
+          const x1 = cx + radius * Math.cos(theta1) * Math.cos(phi1);
+          const y1 = cy + radius * Math.sin(theta1);
+          const x2 = cx + radius * Math.cos(theta1) * Math.cos(phi2);
+          const y2 = y1;
+          const x3 = cx + radius * Math.cos(theta2) * Math.cos(phi2);
+          const y3 = cy + radius * Math.sin(theta2);
+          const x4 = cx + radius * Math.cos(theta2) * Math.cos(phi1);
+          const y4 = y3;
+
+          const sparkle = Math.sin(time * 9 + lat * 2.5 + lon * 1.9);
+          if (sparkle > 0.76) {
+            ctx.fillStyle = '#ffffff';
+          } else if ((lat + lon) % 3 === 0) {
+            ctx.fillStyle = `hsl(${198 + sparkle * 35}, 65%, ${64 + sparkle * 20}%)`;
+          } else if ((lat + lon) % 2 === 0) {
+            ctx.fillStyle = `hsl(${285 + sparkle * 30}, 55%, ${52 + sparkle * 20}%)`;
+          } else {
+            ctx.fillStyle = '#2d2b42';
+          }
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.lineTo(x3, y3);
+          ctx.lineTo(x4, y4);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // Các tia sao 4 cánh lấp lánh trên bề mặt quả cầu
+      for (let s = 0; s < 5; s++) {
+        const sx = cx + Math.cos(time * 2.1 + s * 1.3) * radius * 0.65;
+        const sy = cy + Math.sin(time * 1.7 + s * 1.9) * radius * 0.65;
+        const sa = Math.max(0, Math.sin(time * 7 + s * 2));
+        if (sa > 0.25) drawSparkleStar(ctx, sx, sy, 14 * sa, sa);
+      }
+      ctx.restore();
+    }
+
+    function drawSharpLightCone(ctx, tipX, tipY, baseCenterX, baseY, baseHalfWidth, colorRgb, alpha) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const grad = ctx.createLinearGradient(tipX, tipY, baseCenterX, baseY);
+      grad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1, alpha * 1.5)})`);
+      grad.addColorStop(0.16, `rgba(${colorRgb}, ${alpha * 0.92})`);
+      grad.addColorStop(0.7, `rgba(${colorRgb}, ${alpha * 0.42})`);
+      grad.addColorStop(1, `rgba(${colorRgb}, 0)`);
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(baseCenterX - baseHalfWidth, baseY);
+      ctx.lineTo(baseCenterX + baseHalfWidth, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Lõi tia sáng trung tâm sắc nét
+      const coreGrad = ctx.createLinearGradient(tipX, tipY, baseCenterX, baseY);
+      coreGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1, alpha * 1.6)})`);
+      coreGrad.addColorStop(0.55, `rgba(255, 255, 255, ${alpha * 0.32})`);
+      coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.moveTo(tipX, tipY);
+      ctx.lineTo(baseCenterX - baseHalfWidth * 0.32, baseY);
+      ctx.lineTo(baseCenterX + baseHalfWidth * 0.32, baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      const tipGlow = ctx.createRadialGradient(tipX, tipY, 1, tipX, tipY, 20);
+      tipGlow.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1, alpha * 1.8)})`);
+      tipGlow.addColorStop(1, `rgba(${colorRgb}, 0)`);
+      ctx.fillStyle = tipGlow;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function renderLoop(t) {
+      const W = bgCanvas.width;
+      const H = bgCanvas.height;
+      const time = t * 0.001;
+      const isDrop = t < dropBoostUntil;
+      const freq = isDrop ? 16 : (strobeMode === 2 ? 10 : 4);
+      const subPhase = (time * freq) % 1;
+      const flashOn = strobeMode > 0 && (subPhase < (isDrop ? 0.50 : 0.36));
+
+      /* ─── VẼ CANVAS 1 (NỀN SÀN + TƯỜNG GẠCH LED + QUẢ CẦU DISCO) ─── */
+      bgCtx.clearRect(0, 0, W, H);
+      if (bgStyle === 0) {
+        drawLedBrickWallAndFloor(bgCtx, W, H, time, isDrop, flashOn);
+      } else {
+        const img = bgImages[bgStyle];
+        if (img && img.complete) {
+          bgCtx.drawImage(img, 0, 0, W, H);
+        }
+      }
+      drawDiscoBall(bgCtx, W * 0.35, H * 0.142, Math.min(W, H) * 0.132, time, flashOn);
+
+      /* ─── VẼ CANVAS 2 (LUỒNG ĐÈN CHỚP NÓN + SPOTLIGHT CAMERA + LASER + PHÁO HOA) ─── */
+      fxCtx.clearRect(0, 0, W, H);
+
+      if (strobeMode > 0 || isDrop) {
+        const cones = [
+          { tipX: W * 0.11, tipY: H * 0.24, baseX: W * 0.10, baseY: H * 0.58, width: W * 0.095, rgb: '255, 195, 240', phase: 0.0 },
+          { tipX: W * 0.36, tipY: H * 0.29, baseX: W * 0.35, baseY: H * 0.57, width: W * 0.088, rgb: '175, 248, 255', phase: 1.2 },
+          { tipX: W * 0.53, tipY: H * 0.29, baseX: W * 0.52, baseY: H * 0.57, width: W * 0.088, rgb: '255, 238, 175', phase: 2.4 },
+          { tipX: W * 0.82, tipY: H * 0.25, baseX: W * 0.80, baseY: H * 0.58, width: W * 0.092, rgb: '175, 255, 218', phase: 3.6 }
+        ];
+
+        cones.forEach((c, idx) => {
+          const sway = Math.sin(time * (isDrop ? 3.4 : 1.7) + c.phase) * (W * 0.045);
+          const strobeGate = strobeMode === 2
+            ? (((Math.floor(time * (isDrop ? 16 : 9)) + idx) % 3) !== 0)
+            : true;
+          const pulseAlpha = strobeGate ? (isDrop ? 0.62 : 0.46) : 0.10;
+          drawSharpLightCone(fxCtx, c.tipX, c.tipY, c.baseX + sway, c.baseY, c.width, c.rgb, pulseAlpha);
+        });
+
+        const laserColors = ['#ff80ab', '#80d8ff', '#ffd740', '#b388ff', '#69f0ae', '#ffffff'];
+        for (let i = 0; i < 8; i++) {
+          if (strobeMode === 2 && ((Math.floor(time * 18) + i) % 3 === 0)) continue;
+          const leftSide = i % 2 === 0;
+          const ox = leftSide ? W * 0.03 : W * 0.97;
+          const oy = H * (0.26 + (i % 4) * 0.055);
+          const tx = W * (0.18 + ((Math.sin(time * 2.4 + i) * 0.5 + 0.5) * 0.64));
+          const ty = H * (0.50 + (i % 3) * 0.14);
+
+          fxCtx.save();
+          fxCtx.strokeStyle = laserColors[i % laserColors.length];
+          fxCtx.globalAlpha = isDrop ? 0.58 : 0.34;
+          fxCtx.lineWidth = 1.5;
+          fxCtx.beginPath();
+          fxCtx.moveTo(ox, oy);
+          fxCtx.lineTo(tx, ty);
+          fxCtx.stroke();
+          fxCtx.restore();
+        }
+
+        if (flashOn && (isDrop || Math.floor(time * 12) % 5 === 0)) {
+          fxCtx.save();
+          fxCtx.fillStyle = isDrop ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 225, 250, 0.08)';
+          fxCtx.fillRect(0, 0, W, H);
+          fxCtx.restore();
+        }
+      }
+
+      // Nếu đang bật chế độ CAMERA FOCUS vào 1 nhân vật -> chiếu đèn Spotlight vàng rực vào nhân vật đó
+      if (cameraSpotlightTarget) {
+        const sx = (cameraSpotlightTarget.x / 100) * W;
+        const sy = (cameraSpotlightTarget.y / 100) * H - 28;
+        drawSharpLightCone(fxCtx, W * 0.5, 0, sx, sy + 24, W * 0.12, '255, 235, 130', 0.75);
+      }
+
+      // Pháo hoa
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.08;
+        p.alpha -= 0.022;
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        fxCtx.globalAlpha = p.alpha;
+        fxCtx.fillStyle = p.color;
+        fxCtx.beginPath();
+        fxCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        fxCtx.fill();
+      }
+      fxCtx.globalAlpha = 1;
+
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    /* ═══ KẾT NỐI WEBSOCKET TỚI TIKTOK BRIDGE ═══ */
+    let ws;
+    function sendWs(payload) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(payload));
+      }
+    }
+
+    function connectBridge() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}`);
+      ws.addEventListener('open', () => {
+        connPill.textContent = '🟢 Đã nối Bridge';
+        connPill.classList.remove('offline');
+        sendWs({ type: 'register', role: 'control' });
+      });
+      ws.addEventListener('message', e => {
+        try {
+          const data = JSON.parse(e.data);
+          handleLiveEvent(data);
+        } catch {}
+      });
+      ws.addEventListener('close', () => {
+        connPill.textContent = '🔴 Đã tắt Server';
+        connPill.classList.add('offline');
+        bgMusic.pause();
+        strobeMode = 0;
+        dropBoostUntil = 0;
+        for (const id of [...dancers.keys()]) removeDancer(id);
+        showBanner('⛔ SERVER ĐÃ TẮT — DỪNG SÀN NHẢY', 60000);
+        setTimeout(connectBridge, 3000);
+      });
+    }
+    connectBridge();
+
+    /* ═══ KHỞI TẠO ĐÁM ĐÔNG DÂN QUẨY PHÂN BỔ ĐỀU (KHÔNG CHỒNG ĐÈ) ═══ */
+    const SAMPLE_CROWD = [
+      { name: 'bé dyy💕',       pos: { x: 24, y: 45 }, title: { text: 'Đại bàng',  bg: '/assets/banners/title-ice.png' },   wings: false },
+      { name: 'LAN ANH',        pos: { x: 48, y: 45 }, title: { text: 'Á vương',   bg: '/assets/banners/title-ice.png' },   wings: true },
+      { name: 'Bảo Xinh Trai',  pos: { x: 14, y: 54 }, title: { text: 'Á vương',   bg: '/assets/banners/title-ice.png' },   wings: true },
+      { name: 'cẩm tú 💕',      pos: { x: 36, y: 54 }, title: { text: 'Thần khẩu', bg: '/assets/banners/title-neon.png' },  wings: false },
+      { name: 'xoan !',         pos: { x: 58, y: 53 }, title: { text: 'Bão tim',   bg: '/assets/banners/title-fire.png' },  wings: true },
+      { name: 'ViLee',          pos: { x: 80, y: 52 } },
+      { name: 'TrânTrân',       pos: { x: 22, y: 64 } },
+      { name: 'như 👑',         pos: { x: 45, y: 63 }, title: { text: 'Cuồng tim', bg: '/assets/banners/title-fire.png' },  wings: false },
+      { name: 'Cải Nguyễn',     pos: { x: 67, y: 61 }, title: { text: 'Bá chủ',    bg: '/assets/banners/title-royal.png' }, wings: true },
+      { name: 'Hào phnomphenh', pos: { x: 16, y: 76 } },
+      { name: 'Tuyết Tuyết',    pos: { x: 35, y: 74 } },
+      { name: 'Phương duy',     pos: { x: 55, y: 73 }, title: { text: 'Bão tim',   bg: '/assets/banners/title-fire.png' },  wings: true },
+      { name: 'Duy Ngô',        pos: { x: 26, y: 86 } },
+      { name: 'Vương Tú',       pos: { x: 48, y: 86 }, title: { text: 'Đại bàng',  bg: '/assets/banners/title-ice.png' },   wings: false },
+      { name: 'Alice Phan',     pos: { x: 66, y: 84 } }
+    ];
+
+    function spawnSampleCrowd(extra = 0) {
+      SAMPLE_CROWD.forEach((p, idx) => {
+        ensureDancer('sample-' + idx, p.name, AVATARS[idx % AVATARS.length], {
+          pos: p.pos,
+          title: p.title,
+          wings: p.wings
+        });
+      });
+      for (let i = 0; i < extra; i++) {
+        const name = 'Dân Quẩy #' + (i + 1);
+        ensureDancer('extra-' + i, name, AVATARS[(i + 5) % AVATARS.length]);
+      }
+      relaxCrowdPositions();
+    }
+    spawnSampleCrowd(2);
+
+    /* ═══ SỰ KIỆN NÚT BẤM ═══ */
+    document.getElementById('btn-demo').addEventListener('click', () => {
+      sendWs({ type: 'demo_start', count: 28 });
+      spawnSampleCrowd(10);
+      triggerStrobeDrop(5000);
+      showBanner('🔥 CẢ SÀN QUẨY TỚI BẾN — ĐÈN CHỚP MAX LEVEL! 🔥');
+    });
+
+    document.getElementById('btn-strobe').addEventListener('click', (e) => {
+      strobeMode = (strobeMode + 1) % 3;
+      const labels = [
+        '⚡ Đèn Chớp: ĐANG TẮT',
+        '⚡ Đèn Chớp: VỪA PHẢI',
+        '⚡ Đèn Chớp: CỰC MẠNH'
+      ];
+      e.currentTarget.textContent = labels[strobeMode];
+      if (strobeMode === 2) triggerStrobeDrop(3000);
+    });
+
+    document.getElementById('btn-drop').addEventListener('click', () => {
+      triggerStrobeDrop(5000);
+      spawnFireworks(35, 48, 3);
+      spawnFireworks(65, 48, 3);
+      showBanner('⚡ STROBE DROP — ĐÈN CHỚP TUNG SÀN! ⚡');
+    });
+
+    document.getElementById('btn-vip').addEventListener('click', () => {
+      const target = pickRandom(SAMPLE_CROWD);
+      handleLiveEvent({
+        type: 'gift',
+        userId: 'sample-0',
+        nickname: target.name,
+        giftName: 'Sư Tử Hoàng Kim',
+        diamondCount: 299,
+        action: 'fireworks',
+        durationMs: 6000
+      });
+    });
+
+    document.getElementById('btn-music').addEventListener('click', (e) => {
+      if (bgMusic.paused) {
+        bgMusic.play();
+        e.currentTarget.textContent = '🔇 Tắt Nhạc DJ';
+      } else {
+        bgMusic.pause();
+        e.currentTarget.textContent = '🎵 Bật Nhạc DJ';
+      }
+    });
+
+    document.getElementById('btn-bgmode').addEventListener('click', () => {
+      bgStyle = (bgStyle + 1) % 3;
+      const names = ['SÀN GẠCH LED 3D CHỚP (NHƯ MẪU)', 'SÀN BAR NEON CYBERPUNK', 'SÀN BAR ÂM PHỦ'];
+      showBanner(names[bgStyle]);
+    });
+
+    document.getElementById('btn-chroma').addEventListener('click', () => {
+      document.body.classList.toggle('chroma-mode');
+    });
+
+    // Bấm vào 8 nút Menu Gift góc dưới bên phải -> chạy đúng 8 hiệu ứng riêng biệt!
+    document.querySelectorAll('.gift-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const act = item.dataset.act;
+        const all = [...dancers.values()];
+        const d = all.length ? pickRandom(all) : ensureDancer('guest-1', 'Khách VIP');
+
+        if (act === 'camera') {
+          focusCameraOnDancer(d, 3800);
+          showBanner(`🌹 CAMERA FOCUS: ${d.nickname} ĐANG LÊN SÓNG!`);
+        } else if (act === 'change_character') {
+          d.el.querySelector('.dancer-sprite').src = pickRandom(SPRITES);
+          d.el.classList.add('jumping');
+          spawnFireworks(d.x, d.y - 10, 2);
+          showBanner(`🎵 ${d.nickname} ĐÃ BIẾN HÌNH NHÂN VẬT MỚI!`);
+          setTimeout(() => d.el.classList.remove('jumping'), 3000);
+        } else if (act === 'walk') {
+          applyDancerPosition(d, 18, 66);
+          setTimeout(() => applyDancerPosition(d, 62, 66), 600);
+          setTimeout(() => applyDancerPosition(d, 42, 74), 2200);
+          showBanner(`🍦 ${d.nickname} ĐANG ĐI DẠO QUANH SÀN BAR!`);
+        } else if (act === 'jump') {
+          for (const p of dancers.values()) {
+            p.el.classList.add('jumping');
+            setTimeout(() => p.el.classList.remove('jumping'), 3200);
+          }
+          triggerStrobeDrop(2800);
+          showBanner(`🫰 CẢ SÀN CÙNG NHẢY TUNG NÓC!`);
+        } else if (act === 'fireworks') {
+          triggerStrobeDrop(4500);
+          spawnFireworks(25, 42, 4);
+          spawnFireworks(50, 36, 5);
+          spawnFireworks(75, 42, 4);
+          showBanner(`🍩 ĐẠI TIỆC PHÁO HOA RỰC SÁNG SÀN BAR!`);
+        } else if (act === 'pair') {
+          triggerPairEffect();
+        } else if (act === 'wukong') {
+          triggerWukongEffect(d);
+        } else if (act === 'king') {
+          triggerKingEffect(d);
+        }
+      });
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        document.body.classList.toggle('hide-hud');
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        document.body.classList.toggle('chroma-mode');
+      } else if (e.code === 'Space' && document.activeElement?.tagName !== 'BUTTON') {
+        e.preventDefault();
+        triggerStrobeDrop(4500);
+      }
+    });
+  </script>
+</body>
+</html>

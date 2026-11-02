@@ -1,0 +1,22 @@
+================================================================
+   HUONG DAN SU DUNG SAN BAR 3D LIVE TREN MAY KHAC (1-CLICK)
+================================================================
+
+1. GIAI NEN:
+   - Giai nen toan bo file ZIP nay ra mot thu muc bat ky tren may.
+   - Khong chay truc tiep ben trong file ZIP.
+
+2. CACH CHAY (CHI CAN 1 CLICK):
+   - Nhap dup vao file: CAI_VA_CHAY_NGAY.bat
+   - Script se TU DONG:
+     + Kiem tra va tu dong tai/cai Node.js LTS neu may chua co.
+     + Kiem tra thu vien Node.js (da dong goi san trong ZIP).
+     + Copy bo anh nen San Bar sang D:\TIKTOK_LIVE_BAR\LiveAssets.
+     + Bat Server va mo luon:
+       * Trang Web San Bar: http://127.0.0.1:3000/bar.html
+       * Bang Dieu Khien  : http://127.0.0.1:3000/control.html
+       * Cua so Game 3D   : Build\TIKTOK_LIVE_BAR.exe
+
+3. CACH TAT TOAN BO:
+   - Nhap dup vao file: TAT_SERVER.bat
+================================================================

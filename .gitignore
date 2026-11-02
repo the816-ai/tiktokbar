@@ -17,13 +17,10 @@ UnityProject/Logs/
 UnityProject/UserSettings/
 UnityProject/MemoryCaptures/
 UnityProject/obj/
-UnityProject/Build/
-UnityProject/Builds/
-UnityProject/CommercialBuild/
-UnityProject/Assets/AssetStoreTools/
+UnityProject/UnityProject/Builds/
+UnityProject/CommercialUnityProject/Assets/AssetStoreTools/
 
 # ── Compiled Build output ────────────────────
-Build/
 
 # ── Build logs ───────────────────────────────
 build_log.txt

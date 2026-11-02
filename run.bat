@@ -53,7 +53,7 @@ if defined BRIDGE_READY (
 )
 
 set "PORT_PID="
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr /r /c:":%BRIDGE_PORT% .*LISTENING" 2^>nul') do if not defined PORT_PID set "PORT_PID=%%a"
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /r /c:"127\.0\.0\.1:%BRIDGE_PORT% .*LISTENING" 2^>nul') do if not defined PORT_PID set "PORT_PID=%%a"
 if defined PORT_PID (
     echo [LOI] Cong %BRIDGE_PORT% dang bi chuong trinh khac su dung ^(PID %PORT_PID%^).
     echo Launcher se KHONG tu tat chuong trinh khac de tranh mat du lieu.
@@ -95,6 +95,7 @@ if exist "%ROOT%Build\OngChuMMO_Live.exe" (
 
 :open_control
 start "" "%CONTROL_URL%"
+start "" "http://127.0.0.1:%BRIDGE_PORT%/bar.html"
 echo.
 echo Da khoi dong. Control Panel: %CONTROL_URL%
 exit /b 0
