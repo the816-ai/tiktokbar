@@ -17,6 +17,16 @@
        * Bang Dieu Khien  : http://127.0.0.1:3000/control.html
        * Cua so Game 3D   : Build\TIKTOK_LIVE_BAR.exe
 
-3. CACH TAT TOAN BO:
+3. CACH CAU HINH TIKTOK LIVE STUDIO / OBS DE NET CANG 1080P 60FPS:
+   - CACH TOT NHAT (Khong bao gio bi mo do keo gian cua so):
+     + Trong TikTok LIVE Studio hoac OBS, chon Them Nguon -> Trinh duyet (Browser Source / Link).
+     + URL   : http://127.0.0.1:3000/bar.html?obs=1
+     + Width : 1080
+     + Height: 1920
+     + FPS   : 60
+   - Neu quay bang Quay Cua So (Window Capture):
+     + Bam F11 (hoac nut "Toan Man (F11)") tren trang Web de phong to cuc dai, va bam F1 de an bang dieu khien ben trai.
+
+4. CACH TAT TOAN BO:
    - Nhap dup vao file: TAT_SERVER.bat
 ================================================================
